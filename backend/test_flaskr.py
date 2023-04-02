@@ -14,9 +14,11 @@ class TriviaTestCase(unittest.TestCase):
         """Define test variables and initialize app."""
         self.app = create_app()
         self.client = self.app.test_client
-        self.database_name = "trivia_test"
-        self.database_path = "postgres://{}@{}/{}".format('postgres', 'localhost:5432', self.database_name)
-        setup_db(self.app, self.database_path)
+        DB_HOST = os.getenv('DB_HOST', '127.0.0.1:5432')
+        DB_USER = os.getenv('DB_USER', 'postgres')
+        DB_NAME = os.getenv('DB_NAME', 'trivia_test')
+        DB_PATH = 'postgresql+psycopg2://{}@{}/{}'.format(DB_USER, DB_HOST, DB_NAME)
+        setup_db(self.app, DB_PATH)
 
         # binds the app to the current context
         with self.app.app_context():
@@ -29,10 +31,6 @@ class TriviaTestCase(unittest.TestCase):
         """Executed after reach test"""
         pass
 
-    """
-    TODO
-    Write at least one test for each test for successful operation and for expected errors.
-    """
     def test_get_categories_200(self):
         '''
             Test getting categories successfully
@@ -83,14 +81,18 @@ class TriviaTestCase(unittest.TestCase):
         '''
             Test removing a question successfully
         '''
-        res = self.client().delete('/questions/2')
+        removable_question = Question(question="Q", answer="A", category = 1, difficulty = 1)
+        removable_question.insert()
+        removable_question_id = removable_question.id
+
+        res = self.client().delete('/questions/{}'.format(removable_question_id))
         data = json.loads(res.data)
 
-        question = Question.query.filter(Question.id == 2).one_or_none()
+        question = Question.query.filter(Question.id == removable_question_id).one_or_none()
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data["success"], True)
-        self.assertEqual(data["deleted"], 2)
+        self.assertEqual(data["deleted"], removable_question_id)
         self.assertTrue(len(data["questions"]))
         self.assertTrue(data["total_questions"])
         self.assertEqual(question, None)
